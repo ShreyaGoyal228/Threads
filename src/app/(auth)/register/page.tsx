@@ -1,51 +1,21 @@
 'use client'
 import { zodResolver } from "@hookform/resolvers/zod"
+import Image from "next/image";
 import { z } from "zod";
 import { useForm } from "react-hook-form"
-import { Form , FormControl , FormDescription ,FormField,FormLabel,FormItem,FormMessage} from "~/components/ui/form";
+import { Form , FormControl,FormField,FormLabel,FormItem,FormMessage} from "~/components/ui/form";
 import { Input } from "~/components/ui/input";
 import { Button } from "~/components/ui/button";
+import { useRouter } from "next/navigation";
+import { api } from "~/trpc/react";
+import { registerFormSchema } from "~/index";
+import { toast } from "sonner";
 
-const registerFormSchema = z.object({
-  name: z
-    .string({
-      required_error: "Name is required",
-    })
-    .min(3, { message: "Name should contain atleast 3 chars" }),
-  username: z
-    .string({
-      required_error: "Username is required",
-    })
-    .min(2, { message: "Username should contain atleast 2 chars" }),
-  email: z
-    .string({
-      required_error: "Email is required",
-    })
-    .email(),
-  password: z
-    .string({
-      required_error: "Password is required",
-    })
-    .min(5,{message:"Password should contain min of 5 chars"})
-    .max(8, {
-      message: "Password should contain max of 8 chars",
-    }),
-  confirmPassword: z
-    .string({
-      required_error: "Password is required",
-    })
-    .min(5,{message:"Password should contain min of 5 chars"})
-    .max(8, {
-      message: "Password should contain max of 8 chars",
-    })
-})
-.refine((data)=>data.password === data.confirmPassword , {
-    message:"Passwords don't match",
-    path:["confirmPassword"]
-});
 
 
 export default function Register() {
+  const router=useRouter();
+  const createUserMutation=api.profile.user.useMutation();
     const form=useForm<z.infer<typeof registerFormSchema>>({
         resolver: zodResolver(registerFormSchema),
         defaultValues:{
@@ -57,15 +27,40 @@ export default function Register() {
         }
     })
     const onSubmit=(values:z.infer<typeof registerFormSchema>)=>{
-        console.log("values are",values)
+      createUserMutation.mutate({
+        name:values.name,
+        username:values.username,
+        password:values.password,
+        email:values.email,
+        confirmPassword:values.confirmPassword
+      },
+      {
+        onSuccess:(resp:any)=>{
+          toast(resp.message);
+          console.log("registration successfull");
+          router.push(`/login?message=${resp.message}`);
+        },
+        onError:(resp:any)=>{
+          toast.error(resp.error)
         }
+      }
+    )}
         const onerror=(err:any)=>{
 console.log("Error is",err);
         }
     return(
-        <div className="h-screen flex justify-center items-center">
-<Form {...form} >
-    <form onSubmit={form.handleSubmit(onSubmit,onerror)} className="space-y-8 w-1/3 p-4 h-[75vh] overflow-y-auto">
+      <>
+      <div className="h-screen flex items-center justify-center">
+         <div className="w-1/3 h-[90vh] overflow-y-auto">
+        <div className="relative aspect-square w-10 mx-auto">
+          <Image src={"/images/logo.svg"} alt="logo-image" fill={true}/>
+        </div>
+          <div className="flex flex-col p-4">
+          <h1 className="text-xl font-semibold">Register</h1>
+          <div className="mb-3">Welcome to threads</div>
+        
+<Form {...form}>
+    <form onSubmit={form.handleSubmit(onSubmit,onerror)} className="space-y-8">
         {/* name */}
   <FormField
     control={form.control}
@@ -137,9 +132,14 @@ console.log("Error is",err);
       </FormItem>
     )}
   />
-    <Button type="submit">Submit</Button>
+    <Button type="submit" className="">Register</Button>
   </form>
 </Form>
+<div className="mt-3">Already have an account ? <span className="text-orange-400 cursor-pointer" onClick={()=>router.push("/login")}>Login</span></div>
 </div>
+</div>
+</div>
+</>
+
     )
 }
